@@ -1,7 +1,7 @@
 {
   "family": "medical-bot-task",
   "networkMode": "awsvpc",
-  "executionRoleArn": "arn:aws:iam::<084828573245>:role/ecsTaskExecutionRole",
+  "executionRoleArn": "arn:aws:iam::084828573245:role/ecsTaskExecutionRole",
   "containerDefinitions": [
     {
       "name": "medical-bot",
