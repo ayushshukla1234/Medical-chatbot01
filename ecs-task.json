@@ -1,0 +1,21 @@
+{
+  "family": "medical-bot-task",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::<084828573245>:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "medical-bot",
+      "image": "084828573245.dkr.ecr.us-east-1.amazonaws.com/medical-bot:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ]
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512"
+}
