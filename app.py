@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, redirect, url_for
 from flask_cors import CORS
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage, AIMessage
+from langchain.schema import SystemMessage, HumanMessage
 import os
 import requests
 
@@ -22,72 +22,77 @@ CLERK_PUBLISHABLE_KEY = os.getenv("CLERK_PUBLISHABLE_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 llm = ChatOpenAI(openai_api_key=OPENAI_API_KEY, model="gpt-3.5-turbo")
 
+
 # --------- Clerk Authentication Helper --------- #
-def verify_clerk_token(token):
+def verify_clerk_token(token: str) -> bool:
     """Verify a Clerk session token."""
     try:
-        headers = {"Authorization": f"Bearer {token}"}
-        res = requests.get("https://api.clerk.dev/v1/me", headers=headers)
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        res = requests.get("https://api.clerk.com/v1/users/me", headers=headers)
+
+        print("🔍 Clerk Verification Status:", res.status_code)
         return res.status_code == 200
+
     except Exception as e:
         print("❌ Clerk verification error:", e)
         return False
 
+
 # --------- Routes --------- #
+
 @app.route("/")
 def home():
     return redirect(url_for("chat_page"))
+
 
 @app.route("/chat")
 def chat_page():
     return render_template("chat.html", clerk_publishable_key=CLERK_PUBLISHABLE_KEY)
 
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
-        # Verify Clerk token
+        # Clerk Token Check
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
-            return jsonify({"reply": "Unauthorized — missing Clerk token."}), 401
+            return jsonify({"reply": "Unauthorized — No Clerk token provided."}), 401
 
         token = auth_header.split(" ")[1]
+
         if not verify_clerk_token(token):
             return jsonify({"reply": "Invalid or expired Clerk token."}), 403
 
-        # Get message
+        # Get User Message
         data = request.get_json()
         user_message = data.get("message", "").strip()
-
         if not user_message:
-            return jsonify({"reply": "Please enter a valid question."})
+            return jsonify({"reply": "Please enter a valid medical question."})
 
-        # Create prompt
+        # Prepare Prompt
         messages = [
             SystemMessage(content=(
                 "You are MedAssist, a trusted medical assistant chatbot. "
-                "Provide accurate, safe, non-diagnostic medical information, "
-                "and suggest seeing a doctor when appropriate."
+                "Provide medically accurate, safe, educational information. "
+                "Do NOT give personal medical diagnosis. Suggest a doctor visit if needed."
             )),
-            HumanMessage(content=user_message)
+            HumanMessage(content=user_message),
         ]
 
-        # Get response from OpenAI
+        # Get AI Response
         ai_response = llm.invoke(messages)
+        reply_text = getattr(ai_response, "content", str(ai_response))
 
-        # Safely extract reply text
-        reply_text = getattr(ai_response, "content", None)
-        if not reply_text:
-            reply_text = getattr(ai_response, "text", None)
-        if not reply_text:
-            reply_text = str(ai_response)
-
-        print(f"✅ AI Reply: {reply_text}")  # Debugging output
+        print("🤖 AI Reply:", reply_text)
 
         return jsonify({"reply": reply_text})
 
     except Exception as e:
-        print("❌ Error in /api/chat:", str(e))
-        return jsonify({"reply": f"Internal Server Error: {str(e)}"}), 500
+        print("❌ Backend /api/chat Error:", str(e))
+        return jsonify({"reply": "Internal Server Error"}), 500
 
 
 if __name__ == "__main__":
