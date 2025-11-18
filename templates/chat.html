@@ -17,16 +17,10 @@
       background-color: #1e293b;
       padding: 15px 30px;
       display: flex;
-      justify-content: space-between;
       align-items: center;
       box-shadow: 0 0 10px #334155;
     }
     .navbar h2 { margin: 0; font-size: 1.4rem; color: #06b6d4; }
-    .user-info { display: flex; align-items: center; gap: 15px; font-size: 1rem; }
-    .logout-btn {
-      background-color: #06b6d4; color: white; border: none;
-      padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;
-    }
     .chat-container {
       flex-grow: 1; display: flex; justify-content: center; padding: 30px;
     }
@@ -55,13 +49,9 @@
 
   <div class="navbar">
     <h2>🩺 MedAssist Chatbot</h2>
-    <div class="user-info" id="user-info">
-      <span id="greeting">Loading...</span>
-      <button class="logout-btn" id="logout-btn" style="display:none;">Logout</button>
-    </div>
   </div>
 
-  <div class="chat-container" id="chat-container" style="display:none;">
+  <div class="chat-container">
     <div class="chat-box">
       <div class="messages" id="messages">
         <div class="message assistant"><strong>Assistant:</strong> Hello! How can I assist you today?</div>
@@ -74,74 +64,38 @@
     </div>
   </div>
 
+<script>
+const sendBtn = document.getElementById("send-btn");
+const userInput = document.getElementById("user-input");
+const chatBox = document.getElementById("messages");
 
-  <!-- Clerk JS SDK -->
-  <script
-    async
-    crossorigin="anonymous"
-    data-clerk-publishable-key="{{ clerk_publishable_key }}"
-    src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js">
-  </script>
+sendBtn.addEventListener("click", async () => {
+  const message = userInput.value.trim();
+  if (!message) return;
 
-  <script>
-    window.addEventListener("load", async () => {
-      await window.Clerk.load();
-      const user = window.Clerk.user;
+  const userMsg = document.createElement("div");
+  userMsg.classList.add("message", "user");
+  userMsg.innerHTML = `<strong>You:</strong> ${message}`;
+  chatBox.appendChild(userMsg);
 
-      if (!user) {
-        document.body.innerHTML = "";
-        const signInDiv = document.createElement("div");
-        document.body.appendChild(signInDiv);
-        window.Clerk.mountSignIn(signInDiv);
-        return;
-      }
+  userInput.value = "";
 
-      document.getElementById("greeting").textContent =
-        `👋 Hello, ${user.fullName || user.username}`;
-      document.getElementById("logout-btn").style.display = "inline-block";
-      document.getElementById("chat-container").style.display = "flex";
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
 
-      document.getElementById("logout-btn").addEventListener("click", async () => {
-        await window.Clerk.signOut();
-        location.reload();
-      });
+  const data = await response.json();
 
-      const sendBtn = document.getElementById("send-btn");
-      const userInput = document.getElementById("user-input");
-      const chatBox = document.getElementById("messages");
+  const botMsg = document.createElement("div");
+  botMsg.classList.add("message", "assistant");
+  botMsg.innerHTML = `<strong>Assistant:</strong> ${data.reply}`;
+  chatBox.appendChild(botMsg);
 
-      sendBtn.addEventListener("click", async () => {
-        const message = userInput.value.trim();
-        if (!message) return;
-
-        const token = await window.Clerk.session.getToken({ leeway: 30 });
-
-        const userMsg = document.createElement("div");
-        userMsg.classList.add("message", "user");
-        userMsg.innerHTML = `<strong>You:</strong> ${message}`;
-        chatBox.appendChild(userMsg);
-
-        userInput.value = "";
-
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ message }),
-        });
-
-        const data = await response.json();
-
-        const botMsg = document.createElement("div");
-        botMsg.classList.add("message", "assistant");
-        botMsg.innerHTML = `<strong>Assistant:</strong> ${data.reply}`;
-        chatBox.appendChild(botMsg);
-
-      });
-    });
-  </script>
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+</script>
 
 </body>
 </html>
