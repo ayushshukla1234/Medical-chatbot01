@@ -8,8 +8,6 @@ langchain-community==0.3.26
 langchain-openai==0.3.24
 
 sentence-transformers==2.6.1
-torch==2.2.2+cpu --index-url https://download.pytorch.org/whl/cpu
-
 pypdf==5.6.1
 gunicorn==21.2.0
 pymongo==4.7.2
